@@ -16,7 +16,7 @@
 
 int lirTH = 100;
 int rirTH = 100;
-int birTH = 120;
+int birTH = 100;
 
 void TaskIRSensor( void *pvParameters );
 void TaskUSSensor( void *pvParameters );
@@ -25,7 +25,7 @@ void TaskPrintIR( void *pvParameters );
 
 int L1, R1, P1;
 int lir, rir, bir;
-int targetAngle;
+int targetAngle = 90;
 
 Servo servo;
 
@@ -41,7 +41,7 @@ void setup() {
   //          Taskname      "name"      Stacksize  Priority
   xTaskCreate(TaskIRSensor, "IRSensor", 128, NULL, 1, NULL);
   //xTaskCreate(TaskUSSensor, "USSensor", 128, NULL, 3, NULL);
-  //xTaskCreate(TaskDrive,    "Drive",    128, NULL, 3, NULL);
+  xTaskCreate(TaskDrive,    "Drive",    128, NULL, 3, NULL);
   xTaskCreate(TaskPrintIR,  "PrintIR",  128, NULL, 2, NULL);
 
   // Start by driving forward
@@ -61,13 +61,12 @@ void TaskIRSensor(void *pvParameters){
     lir = analogRead(LIR_PIN)-L1;        //take reading from photodiode  :noise
     rir = analogRead(RIR_PIN)-R1;
     bir = analogRead(BIR_PIN)-P1;
-    //Serial.println(bir);
+    vTaskDelay(10 / portTICK_PERIOD_MS);
   }
 }
 
 void TaskUSSensor(void * pvParameters) {
   for (;;) {
-    continue;
     int closestDistance = 300;
     int closestAngle = 0;
     //Serial.println(closestDistance);
@@ -91,33 +90,49 @@ void TaskUSSensor(void * pvParameters) {
 
 void TaskDrive(void *pvParameters){
   for (;;) {
-    continue;
     // If IR sensors see black, drive away
+    vTaskDelay(10 / portTICK_PERIOD_MS);
     if (lir < lirTH && rir < rirTH) 
     {
       setWheelDir("left", -1);
       setWheelDir("right", -1);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      setWheelDir("left", 1);
+      setWheelDir("right", -1);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      setWheelDir("left", 1);
+      setWheelDir("right", 1);
     }
     else if(lir < lirTH)
     {
+      setWheelDir("left", 1);
       setWheelDir("right", -1);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      setWheelDir("left", 1);
+      setWheelDir("right", 1);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     else if(rir < rirTH)
     {
       setWheelDir("left", -1);
+      setWheelDir("right", 1);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+      setWheelDir("left", 1);
+      setWheelDir("right", 1);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     else if(bir < birTH){
       setWheelDir("left", 1);
       setWheelDir("right", 1);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     else {
-      return;
       // Else if no IR-sensors detect, turn towards target angle and drive forwards
       if ( targetAngle < 90) 
       {
         setWheelDir("left", 0);
         setWheelDir("right", 1);
-        vTaskDelay((90 - targetAngle) / portTICK_PERIOD_MS);
+        vTaskDelay((90 - targetAngle) * 2 / portTICK_PERIOD_MS);
         setWheelDir("left", 1);
         setWheelDir("right", 1);
       }
@@ -125,19 +140,15 @@ void TaskDrive(void *pvParameters){
       {
         setWheelDir("left", 0);
         setWheelDir("right", 1);
-        vTaskDelay((targetAngle - 90) / portTICK_PERIOD_MS);
+        vTaskDelay((targetAngle - 90)* 2 / portTICK_PERIOD_MS);
         setWheelDir("left", 1);
         setWheelDir("right", 1);
       }
-    }
-
-    
-    
+    } 
   }
 }
 
 void setWheelDir(String side, int dir){ //dir=1 is forward, 0 is stop, -1 is reverse
-  return;
   int pin1;
   int pin2;
   if(side == "left"){
@@ -173,7 +184,7 @@ void TaskPrintIR(void *pvParameters){
     Serial.print("  ");
     Serial.print("Back = ");
     Serial.println(bir);
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
   }
 }
 

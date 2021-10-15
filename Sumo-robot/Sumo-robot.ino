@@ -58,6 +58,7 @@ void TaskIRSensor(void *pvParameters){
 }
 
 void Drive(int side, int dir){ //side=0 is left, dir=1 is forward.
+  return;
   int pin1;
   int pin2;
   if(side==0){
