@@ -11,8 +11,8 @@
 #define RIR_PIN A1
 #define BIR_PIN A2
 
-#define SERVO_PIN 12
-#define US_PIN 6
+#define SERVO_PIN 9
+#define US_PIN 10
 
 int lirTH = 100;
 int rirTH = 100;
@@ -21,7 +21,7 @@ int birTH = 100;
 void TaskIRSensor( void *pvParameters );
 void TaskUSSensor( void *pvParameters );
 void TaskDrive( void *pvParameters );
-void TaskPrintIR( void *pvParameters );
+void TaskPrintInfo( void *pvParameters );
 
 int L1, R1, P1;
 int lir, rir, bir;
@@ -40,9 +40,9 @@ void setup() {
   Serial.begin(9600);
   //          Taskname      "name"      Stacksize  Priority
   xTaskCreate(TaskIRSensor, "IRSensor", 128, NULL, 1, NULL);
-  //xTaskCreate(TaskUSSensor, "USSensor", 128, NULL, 3, NULL);
+  xTaskCreate(TaskUSSensor, "USSensor", 128, NULL, 3, NULL);
   xTaskCreate(TaskDrive,    "Drive",    128, NULL, 3, NULL);
-  xTaskCreate(TaskPrintIR,  "PrintIR",  128, NULL, 2, NULL);
+  xTaskCreate(TaskPrintInfo,  "PrintInfo",  128, NULL, 2, NULL);
 
   // Start by driving forward
   setWheelDir("left", 1);
@@ -69,8 +69,7 @@ void TaskUSSensor(void * pvParameters) {
   for (;;) {
     int closestDistance = 300;
     int closestAngle = 0;
-    //Serial.println(closestDistance);
-    for(int angle = 2; angle < 180; angle++)
+    for(int angle = 0; angle < 180; angle+=1)
     {
       servo.write(angle);
       int currentDistance = getDistance();
@@ -79,19 +78,66 @@ void TaskUSSensor(void * pvParameters) {
         closestAngle = angle;
         closestDistance = currentDistance;
       }
-      vTaskDelay(10 / portTICK_PERIOD_MS);
-      Serial.println(closestDistance);
+      vTaskDelay(20 / portTICK_PERIOD_MS);
     }
     servo.write(closestAngle);
     targetAngle = closestAngle;
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    continue;
+    if ( targetAngle < 90) 
+      {
+        setWheelDir("left", -1);
+        setWheelDir("right", 1);
+        vTaskDelay((90 - targetAngle) * 30 / portTICK_PERIOD_MS);
+        targetAngle = 90;
+        setWheelDir("left", 1);
+        setWheelDir("right", 1);
+      }
+      else if ( targetAngle > 90) 
+      {
+        setWheelDir("left", 1);
+        setWheelDir("right", -1);
+        vTaskDelay((targetAngle - 90)* 30 / portTICK_PERIOD_MS);
+        targetAngle = 90;
+        setWheelDir("left", 1);
+        setWheelDir("right", 1);
+      }
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    setWheelDir("left", 0);
+    setWheelDir("right", 0);
   }
+}
+
+int getDistance() {
+  pinMode(US_PIN, OUTPUT);
+  digitalWrite(US_PIN, LOW);   
+  delayMicroseconds(2);
+  digitalWrite(US_PIN, HIGH);  
+  delayMicroseconds(20);
+  digitalWrite(US_PIN, LOW);
+  
+  pinMode(US_PIN, INPUT);
+  float Fdistance = pulseIn(US_PIN, HIGH);  
+  Fdistance = Fdistance / 58;       
+  return (int)Fdistance;
 }
 
 void TaskDrive(void *pvParameters){
   for (;;) {
+     if (lir < lirTH || rir < rirTH) {
+      setWheelDir("left", -1);
+      setWheelDir("right", -1);
+     }
+     else if(bir < birTH){
+      setWheelDir("left", 1);
+      setWheelDir("right", 1);
+     }
+    vTaskDelay(20 / portTICK_PERIOD_MS);
+
+    continue;
+
+    
     // If IR sensors see black, drive away
-    vTaskDelay(10 / portTICK_PERIOD_MS);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
     if (lir < lirTH && rir < rirTH) 
     {
       setWheelDir("left", -1);
@@ -132,7 +178,8 @@ void TaskDrive(void *pvParameters){
       {
         setWheelDir("left", 0);
         setWheelDir("right", 1);
-        vTaskDelay((90 - targetAngle) * 2 / portTICK_PERIOD_MS);
+        vTaskDelay((90 - targetAngle) * 20 / portTICK_PERIOD_MS);
+        targetAngle = 90;
         setWheelDir("left", 1);
         setWheelDir("right", 1);
       }
@@ -140,7 +187,8 @@ void TaskDrive(void *pvParameters){
       {
         setWheelDir("left", 0);
         setWheelDir("right", 1);
-        vTaskDelay((targetAngle - 90)* 2 / portTICK_PERIOD_MS);
+        vTaskDelay((targetAngle - 90)* 20 / portTICK_PERIOD_MS);
+        targetAngle = 90;
         setWheelDir("left", 1);
         setWheelDir("right", 1);
       }
@@ -161,22 +209,22 @@ void setWheelDir(String side, int dir){ //dir=1 is forward, 0 is stop, -1 is rev
     pin2 = RW_PIN2;
   }
   if(dir == 1){
-    digitalWrite(pin1, LOW);
-    digitalWrite(pin2, HIGH);
+    digitalWrite(pin1, HIGH);
+    digitalWrite(pin2, LOW);
   }
   else if (dir == 0){
     digitalWrite(pin1, LOW);
     digitalWrite(pin2, LOW);
   }
-  else{
-    digitalWrite(pin1, HIGH);
-    digitalWrite(pin2, LOW);
+  else if (dir == -1){
+    digitalWrite(pin1, LOW);
+    digitalWrite(pin2, HIGH);
   }
 }
 
-void TaskPrintIR(void *pvParameters){
+void TaskPrintInfo(void *pvParameters){
   for(;;){
-    Serial.print("Left = ");
+    Serial.print("IR - Left = ");
     Serial.print(lir); 
     Serial.print("  ");
     Serial.print("Right = ");
@@ -184,23 +232,13 @@ void TaskPrintIR(void *pvParameters){
     Serial.print("  ");
     Serial.print("Back = ");
     Serial.println(bir);
+    Serial.print("US - Target angle");
+    Serial.println(targetAngle);
+    Serial.println();
     vTaskDelay(5000 / portTICK_PERIOD_MS);
   }
 }
 
-int getDistance() {
-  pinMode(US_PIN, OUTPUT);
-  digitalWrite(US_PIN, LOW);   
-  delayMicroseconds(2);
-  digitalWrite(US_PIN, HIGH);  
-  delayMicroseconds(20);
-  digitalWrite(US_PIN, LOW);
-  
-  pinMode(US_PIN, INPUT);
-  float Fdistance = pulseIn(US_PIN, HIGH);  
-  Fdistance = Fdistance / 58;       
-  return (int)Fdistance;
-}
 
 void loop(){
 

@@ -11,7 +11,7 @@ int rw1 = 6;
 int rw2 = 5;
 int lirTH = 100;
 int rirTH = 100;
-int birTH = 120;
+int birTH = 100;
 
 void setup() {
   // put your setup code here, to run once:
@@ -42,6 +42,11 @@ void TaskIRSensor(void *pvParameters){
     bir=analogRead(A2)-P1;
 
     //DRIVING: (should maybe be a task for itself)
+    if(bir < birTH){
+      Drive(0, 1);
+      Drive(1, 1);
+      Serial.println("backing");
+    } 
     if(lir < lirTH)
     {
       Drive(1, -1);
@@ -50,15 +55,11 @@ void TaskIRSensor(void *pvParameters){
     {
       Drive(0, -1);
     }
-    else if(bir < birTH){
-      Drive(0, 1);
-      Drive(1, 1);
-    } 
+    
   }
 }
 
 void Drive(int side, int dir){ //side=0 is left, dir=1 is forward.
-  return;
   int pin1;
   int pin2;
   if(side==0){
@@ -70,7 +71,7 @@ void Drive(int side, int dir){ //side=0 is left, dir=1 is forward.
     pin1 = rw1;
     pin2 = rw2;
   }
-  if(dir == 1){
+  if(dir == -1){
     digitalWrite(pin1, LOW);
     digitalWrite(pin2, HIGH);
   }
