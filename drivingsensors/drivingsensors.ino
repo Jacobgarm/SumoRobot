@@ -130,7 +130,6 @@ void TaskDrive(void *pvParameters){
       setWheelDir("right", -1);
     }
     else if (targetAngle < 0) {
-      continue;
       setWheelDir("left", 0);
       setWheelDir("right", 1);
       vTaskDelay(20 / portTICK_PERIOD_MS);
@@ -139,7 +138,6 @@ void TaskDrive(void *pvParameters){
       targetAngle++;
     }
     else if (targetAngle > 0) {
-      continue;
       setWheelDir("left", 0);
       setWheelDir("right", 1);
       vTaskDelay(20 / portTICK_PERIOD_MS);

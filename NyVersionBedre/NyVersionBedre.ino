@@ -30,7 +30,7 @@ int enemyAngle = 0;
 
 Servo servo;
 int servoAngle = 0;
-int servoStep = 3;
+int servoStep = 2;
 int pastDistance = 1000;
 
 void setup() {
@@ -43,6 +43,7 @@ void setup() {
   servo.attach(SERVO_PIN);
   servo.write(servoAngle);
   Serial.begin(9600);
+  delay(3000);
   //          Taskname      "name"      Stacksize  Priority
   xTaskCreate(TaskIRSensor, "IRSensor", 128, NULL, 1, NULL);
   xTaskCreate(TaskUSSensor, "USSensor", 128, NULL, 1, NULL);
@@ -82,15 +83,15 @@ void TaskUSSensor(void * pvParameters) {
     servoAngle += servoStep;
     servo.write(servoAngle+90);
     vTaskDelay(50 / portTICK_PERIOD_MS);
-    if (servoAngle > 80 || servoAngle < -80){
+    if (servoAngle > 50 || servoAngle < -30){
       servoStep *= -1;
       pastDistance = 1000;
     }
     else {
       int d = getDistance();
-      
+      //Serial.println(d);
       if (d > pastDistance + 10 && pastDistance < 30) {
-        enemyAngle = servoAngle - 3 * servoStep;
+        enemyAngle = servoAngle - 4 * servoStep;
         servoStep *= -1;
       }
       pastDistance = d;
@@ -116,13 +117,13 @@ void TaskDrive(void *pvParameters){
   for (;;) {
     vTaskDelay(8 / portTICK_PERIOD_MS);
     if (forward) {
-      if (enemyAngle < -45) {
-        setWheelDir("left", 0);
-        setWheelDir("right", 1);
-      } 
-      else if  (enemyAngle > 45) {
+      if (enemyAngle < -90) {
         setWheelDir("left", 1);
-        setWheelDir("right", 0);
+        setWheelDir("right", -1);
+      } 
+      else if  (enemyAngle > 90) {
+        setWheelDir("left", -1);
+        setWheelDir("right", 1);
       }
       else {
         setWheelDir("left", 1);
